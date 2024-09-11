@@ -12,7 +12,7 @@ import (
 func main() {
 	err := godotenv.Load("configs/.env")
 	if err != nil {
-		log.Fatalf("An error occurred while importing configuration files: %v", err)
+		log.Printf("An error occurred while importing configuration files")
 		return
 	}
 
@@ -22,7 +22,7 @@ func main() {
 
 	err = http.ListenAndServe(addr, mux)
 	if err != nil {
-		log.Fatalf("The server could not be started due to an error: %v", err)
+		log.Printf("The server could not be started due to an error")
 		return
 	}
 }
