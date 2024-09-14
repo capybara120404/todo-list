@@ -19,7 +19,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.Dir("web")))
 
-	err = http.ListenAndServe(configs.PathToDB, mux)
+	err = http.ListenAndServe(configs.Addr, mux)
 	if err != nil {
 		log.Printf("the server could not be started due to an error: %v", err)
 		return

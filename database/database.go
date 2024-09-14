@@ -13,13 +13,13 @@ type Connecter struct {
 	db *sql.DB
 }
 
-func OpenOrCreate() (*Connecter, error) {
+func OpenOrCreate(name string) (*Connecter, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("error getting working directory: %v", err)
 	}
 
-	dbFile := filepath.Join(currentDir, "scheduler.db")
+	dbFile := filepath.Join(currentDir, name)
 
 	_, err = os.Stat(dbFile)
 	var create bool
