@@ -5,12 +5,11 @@ import (
 	"net/http"
 
 	"github.com/capybara120404/todo-list/configs"
-	"github.com/capybara120404/todo-list/database"
 	"github.com/capybara120404/todo-list/handlers"
 )
 
 func main() {
-	connecter, err := database.OpenOrCreate(configs.PathToDB)
+	connecter, err := handlers.OpenOrCreate(configs.PathToDB)
 	if err != nil {
 		log.Printf("error opening or creating database: %v", err)
 		return
@@ -19,7 +18,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.Dir("web")))
-	mux.HandleFunc("/api/nextdate", handlers.NexDateHandler)
+	mux.HandleFunc("/api/nextdate", connecter.NexDateHandler)
+	mux.HandleFunc("/api/task", func(w http.ResponseWriter, r *http.Request) {
+
+	})
 
 	err = http.ListenAndServe(configs.Addr, mux)
 	if err != nil {
