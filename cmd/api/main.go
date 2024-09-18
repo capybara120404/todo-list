@@ -6,6 +6,7 @@ import (
 
 	"github.com/capybara120404/todo-list/configs"
 	"github.com/capybara120404/todo-list/database"
+	"github.com/capybara120404/todo-list/handlers"
 )
 
 func main() {
@@ -18,6 +19,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.Dir("web")))
+	mux.HandleFunc("/api/nextdate", handlers.NexDateHandler)
 
 	err = http.ListenAndServe(configs.Addr, mux)
 	if err != nil {
