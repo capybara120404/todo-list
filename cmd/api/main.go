@@ -6,6 +6,7 @@ import (
 
 	"github.com/capybara120404/todo-list/configs"
 	"github.com/capybara120404/todo-list/handlers"
+	"github.com/go-chi/chi/v5"
 )
 
 func main() {
@@ -16,14 +17,13 @@ func main() {
 	}
 	defer connecter.Close()
 
-	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir("web")))
-	mux.HandleFunc("/api/nextdate", connecter.NexDateHandler)
-	mux.HandleFunc("/api/task", func(w http.ResponseWriter, r *http.Request) {
+	router := chi.NewRouter()
+	fs := http.FileServer(http.Dir("web"))
+	router.Handle("/*", http.StripPrefix("/", fs))
+	router.Get("/api/nextdate", connecter.NexDateHandler)
+	router.Post("/api/task", connecter.AddTaskHandler)
 
-	})
-
-	err = http.ListenAndServe(configs.Addr, mux)
+	err = http.ListenAndServe(configs.Addr, router)
 	if err != nil {
 		log.Printf("the server could not be started due to an error: %v", err)
 		return
