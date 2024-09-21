@@ -1,70 +1,92 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-
-type Connecter struct {
-	db *sql.DB
+type task struct {
+	Date    string `json:"date"`
+	Title   string `json:"title"`
+	Comment string `json:"comment,omitempty"`
+	Repeat  string `json:"repeat"`
 }
 
-func OpenOrCreate(name string) (*Connecter, error) {
-	currentDir, err := os.Getwd()
+func (connecter *Connecter) AddTaskHandler(w http.ResponseWriter, r *http.Request) {
+	var task task
+	var buffer bytes.Buffer
+	now := time.Now()
+
+	_, err := buffer.ReadFrom(r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error getting working directory: %v", err)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	dbFile := filepath.Join(currentDir, name)
-
-	_, err = os.Stat(dbFile)
-	var create bool
+	err = json.Unmarshal(buffer.Bytes(), &task)
 	if err != nil {
-		create = true
+		writeJSONError(w, "invalid JSON format", http.StatusBadRequest)
+		return
 	}
 
-	db, err := sql.Open("sqlite3", dbFile)
-	if err != nil {
-		return nil, fmt.Errorf("error opening database: %v", err)
+	if task.Title == "" {
+		writeJSONError(w, "title is required", http.StatusBadRequest)
+		return
 	}
 
-	if create {
-		err = createDatabase(db)
+	if task.Date == "" {
+		task.Date = now.Format("20060102")
+	} else {
+		date, err := time.Parse("20060102", task.Date)
 		if err != nil {
-			return nil, fmt.Errorf("error creating database: %v", err)
+			writeJSONError(w, "Invalid date format", http.StatusBadRequest)
+			return
+		}
+
+		if date.Before(now) {
+			if task.Repeat != "" {
+				nextDate, err := nextDate(now, task.Date, task.Repeat)
+				if err != nil {
+					writeJSONError(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				task.Date = nextDate
+			} else {
+				task.Date = now.Format("20060102")
+			}
 		}
 	}
 
-	return &Connecter{db: db}, nil
+	res, err := connecter.db.Exec("INSERT INTO scheduler (date, title, comment, repeat) VALUES (:date, :title, :comment, :repeat)",
+		sql.Named("date", task.Date),
+		sql.Named("title", task.Title),
+		sql.Named("comment", task.Comment),
+		sql.Named("repeat", task.Repeat),
+	)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{"id": id})
 }
 
-func (c *Connecter) Close() {
-	defer c.db.Close()
-}
-
-func createDatabase(db *sql.DB) error {
-	query := `CREATE TABLE scheduler (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		date TEXT NOT NULL,
-		title TEXT NOT NULL,
-		comment TEXT NOT NULL,
-		repeat TEXT NOT NULL
-	);
-	CREATE INDEX date_index ON scheduler(date);`
-	_, err := db.Exec(query)
-	return err
-}
-
-
-func (connecter *Connecter) AddTaskHandler(w http.ResponseWriter, r *http.Request) {
-	
+func writeJSONError(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
 func (connecter *Connecter) NexDateHandler(w http.ResponseWriter, r *http.Request) {
