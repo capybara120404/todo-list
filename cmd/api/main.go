@@ -22,6 +22,7 @@ func main() {
 	router.Handle("/*", http.StripPrefix("/", fs))
 	router.Get("/api/nextdate", connecter.NexDateHandler)
 	router.Post("/api/task", connecter.AddTaskHandler)
+	router.Get("/api/tasks", connecter.GetTasksHandler)
 
 	err = http.ListenAndServe(configs.Addr, router)
 	if err != nil {

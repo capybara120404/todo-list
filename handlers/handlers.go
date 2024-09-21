@@ -12,10 +12,58 @@ import (
 )
 
 type task struct {
+	Id      string `json:"id"`
 	Date    string `json:"date"`
 	Title   string `json:"title"`
 	Comment string `json:"comment,omitempty"`
 	Repeat  string `json:"repeat"`
+}
+
+func (connecter *Connecter) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
+	rows, err := connecter.db.Query("SELECT * FROM scheduler")
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer rows.Close()
+
+	var tasks []task
+	for rows.Next() {
+		task := task{}
+
+		err := rows.Scan(&task.Id, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	if err := rows.Err(); err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	
+	if tasks == nil{
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"tasks": make([]task, 0)})
+	} else {
+		tasks = sortTasksByDate(tasks)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"tasks": tasks})	
+	}
+}
+
+func sortTasksByDate(tasks []task) []task {
+	for i := 0; i < len(tasks)-1; i++ {
+		for j := i + 1; j < len(tasks); j++ {
+			if tasks[i].Date > tasks[j].Date {
+				tasks[i], tasks[j] = tasks[j], tasks[i]
+			}
+		}
+	}
+	return tasks
 }
 
 func (connecter *Connecter) AddTaskHandler(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +93,7 @@ func (connecter *Connecter) AddTaskHandler(w http.ResponseWriter, r *http.Reques
 	} else {
 		date, err := time.Parse("20060102", task.Date)
 		if err != nil {
-			writeJSONError(w, "Invalid date format", http.StatusBadRequest)
+			writeJSONError(w, "invalid date format", http.StatusBadRequest)
 			return
 		}
 
