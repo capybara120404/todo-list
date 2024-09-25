@@ -17,12 +17,14 @@ func main() {
 	}
 	defer connecter.Close()
 
-	router := chi.NewRouter()
-	fs := http.FileServer(http.Dir("web"))
-	router.Handle("/*", http.StripPrefix("/", fs))
-	router.Get("/api/nextdate", connecter.NexDateHandler)
-	router.Post("/api/task", connecter.AddTaskHandler)
-	router.Get("/api/tasks", connecter.GetTasksHandler)
+		router := chi.NewRouter()
+		fs := http.FileServer(http.Dir("web"))
+		router.Handle("/*", http.StripPrefix("/", fs))
+		router.Get("/api/nextdate", connecter.NexDateHandler)
+		router.Post("/api/task", connecter.AddTaskHandler)
+		router.Get("/api/tasks", connecter.GetTasksHandler)
+		router.Get("/api/task", connecter.GetTaskByIdHandler)
+		router.Put("/api/task", connecter.ChangeTaskHandler)
 
 	err = http.ListenAndServe(configs.Addr, router)
 	if err != nil {
