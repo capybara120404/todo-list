@@ -30,6 +30,8 @@ func main() {
 	router.Put("/api/task", connecter.ChangeTaskHandler)
 	router.Delete("/api/task", connecter.DeleteTaskHandler)
 
+	log.Printf("the server start at port: %s", configs.Addr)
+
 	err = http.ListenAndServe(configs.Addr, router)
 	if err != nil {
 		log.Printf("the server could not be started due to an error: %v", err)
