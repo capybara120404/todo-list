@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -18,15 +16,10 @@ type task struct {
 	Repeat  string `json:"repeat"`
 }
 
-func (connecter *Connecter) DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+func (connecter *connecter) DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getAndCheckId(r)
 	if err != nil {
-		writeJSONError(w, "invalid task Id format", http.StatusBadRequest)
-		return
-	}
-
-	if id <= 0 {
-		writeJSONError(w, "task Id must be greater than zero", http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -41,28 +34,18 @@ func (connecter *Connecter) DeleteTaskHandler(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(map[string]any{})
 }
 
-func (connecter *Connecter) MarkAsCompletedHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+func (connecter *connecter) MarkAsCompletedHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getAndCheckId(r)
 	if err != nil {
-		writeJSONError(w, "invalid task Id format", http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if id <= 0 {
-		writeJSONError(w, "task Id must be greater than zero", http.StatusBadRequest)
-		return
-	}
+	row := connecter.db.QueryRow("SELECT id, date, title, comment, repeat FROM scheduler WHERE id = :id", sql.Named("id", id))
 
-	row := connecter.db.QueryRow("SELECT * FROM scheduler WHERE id = :id", sql.Named("id", id))
-	task := task{}
-
-	err = row.Scan(&task.Id, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	task, err := convertSqlToTask(row)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			writeJSONError(w, "task not found", http.StatusNotFound)
-		} else {
-			writeJSONError(w, "error retrieving task from database", http.StatusBadRequest)
-		}
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -104,35 +87,22 @@ func (connecter *Connecter) MarkAsCompletedHandler(w http.ResponseWriter, r *htt
 	json.NewEncoder(w).Encode(map[string]any{})
 }
 
-func (connecter *Connecter) ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
-	var task task
-	var buffer bytes.Buffer
-
-	_, err := buffer.ReadFrom(r.Body)
+func (connecter *connecter) ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
+	task, err := getTaskFromBody(r)
 	if err != nil {
-		writeJSONError(w, "error reading request body", http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = json.Unmarshal(buffer.Bytes(), &task)
+	err = isCorrect(w, &task, http.StatusBadRequest)
 	if err != nil {
-		writeJSONError(w, "invalid JSON format", http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	correct := isCorrect(w, &task, http.StatusBadRequest)
-	if !correct {
-		return
-	}
-
-	id, err := strconv.Atoi(task.Id)
+	id, err := getAndCheckId(r)
 	if err != nil {
-		writeJSONError(w, "invalid task Id format", http.StatusBadRequest)
-		return
-	}
-
-	if id <= 0 {
-		writeJSONError(w, "task Id must be greater than zero", http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -162,28 +132,18 @@ func (connecter *Connecter) ChangeTaskHandler(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(map[string]any{})
 }
 
-func (connecter *Connecter) GetTaskByIdHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+func (connecter *connecter) GetTaskByIdHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getAndCheckId(r)
 	if err != nil {
-		writeJSONError(w, "invalid task Id format", http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if id <= 0 {
-		writeJSONError(w, "task Id must be greater than zero", http.StatusBadRequest)
-		return
-	}
+	row := connecter.db.QueryRow("SELECT id, date, title, comment, repeat FROM scheduler WHERE id = :id", sql.Named("id", id))
 
-	row := connecter.db.QueryRow("SELECT * FROM scheduler WHERE id = :id", sql.Named("id", id))
-	task := task{}
-
-	err = row.Scan(&task.Id, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	task, err := convertSqlToTask(row)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			writeJSONError(w, "task not found", http.StatusNotFound)
-		} else {
-			writeJSONError(w, "error retrieving task from database", http.StatusBadRequest)
-		}
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -191,8 +151,8 @@ func (connecter *Connecter) GetTaskByIdHandler(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(task)
 }
 
-func (connecter *Connecter) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
-	rows, err := connecter.db.Query("SELECT * FROM scheduler ORDER BY date")
+func (connecter *connecter) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
+	rows, err := connecter.db.Query("SELECT id, date, title, comment, repeat FROM scheduler ORDER BY date LIMIT 10")
 	if err != nil {
 		writeJSONError(w, "error querying tasks from the database", http.StatusBadRequest)
 		return
@@ -225,24 +185,16 @@ func (connecter *Connecter) GetTasksHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func (connecter *Connecter) AddTaskHandler(w http.ResponseWriter, r *http.Request) {
-	var task task
-	var buffer bytes.Buffer
-
-	_, err := buffer.ReadFrom(r.Body)
+func (connecter *connecter) AddTaskHandler(w http.ResponseWriter, r *http.Request) {
+	task, err := getTaskFromBody(r)
 	if err != nil {
-		writeJSONError(w, "error reading request body", http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = json.Unmarshal(buffer.Bytes(), &task)
+	err = isCorrect(w, &task, http.StatusBadRequest)
 	if err != nil {
-		writeJSONError(w, "invalid JSON format", http.StatusBadRequest)
-		return
-	}
-
-	correct := isCorrect(w, &task, http.StatusBadRequest)
-	if !correct {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -267,20 +219,20 @@ func (connecter *Connecter) AddTaskHandler(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]any{"id": id})
 }
 
-func (connecter *Connecter) NexDateHandler(w http.ResponseWriter, r *http.Request) {
+func (connecter *connecter) NexDateHandler(w http.ResponseWriter, r *http.Request) {
 	nowStr := r.FormValue("now")
 	dateStr := r.FormValue("date")
 	repeat := r.FormValue("repeat")
 
-	now, err := time.Parse("20060102", nowStr)
+	now, err := time.Parse(dateFormat, nowStr)
 	if err != nil {
-		http.Error(w, "invalid now format", http.StatusBadRequest)
+		writeJSONError(w, "invalid now format", http.StatusBadRequest)
 		return
 	}
 
 	nextDate, err := nextDate(now, dateStr, repeat)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

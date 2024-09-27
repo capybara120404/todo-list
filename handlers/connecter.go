@@ -9,11 +9,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type Connecter struct {
+type connecter struct {
 	db *sql.DB
 }
 
-func OpenOrCreate(name string) (*Connecter, error) {
+func OpenOrCreate(name string) (*connecter, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("error getting working directory: %v", err)
@@ -39,10 +39,10 @@ func OpenOrCreate(name string) (*Connecter, error) {
 		}
 	}
 
-	return &Connecter{db: db}, nil
+	return &connecter{db: db}, nil
 }
 
-func (c *Connecter) Close() {
+func (c *connecter) Close() {
 	defer c.db.Close()
 }
 
@@ -52,7 +52,7 @@ func createDatabase(db *sql.DB) error {
 		date TEXT NOT NULL,
 		title TEXT NOT NULL,
 		comment TEXT NOT NULL,
-		repeat TEXT NOT NULL
+		repeat TEXT NOT NULL CHECK(length(repeat <= 128))
 	);
 	CREATE INDEX date_index ON scheduler(date);`
 	_, err := db.Exec(query)
