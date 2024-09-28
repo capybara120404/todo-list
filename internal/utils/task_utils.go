@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-
 const DateFormat = "20060102"
 
 func WriteJSONError(w http.ResponseWriter, message string, statusCode int) {
@@ -17,7 +16,6 @@ func WriteJSONError(w http.ResponseWriter, message string, statusCode int) {
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
-
 
 func GetAndCheckId(r *http.Request) (int, error) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
