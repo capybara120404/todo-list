@@ -37,7 +37,7 @@ func (repository *TaskRepository) Add(task *Task) (int64, error) {
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("error retrieving last insert ID")
+		return 0, fmt.Errorf("error retrieving last insert Id")
 	}
 
 	return id, nil

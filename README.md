@@ -18,7 +18,7 @@ A simple to-do list application that allows users to manage tasks with basic CRU
 
 ## How to Run
 
-1. Clone the repository:
+Clone the repository:
    ```bash
    git clone https://github.com/capybara120404/todo-list
    cd todo-list
@@ -29,7 +29,7 @@ A simple to-do list application that allows users to manage tasks with basic CRU
 
 - `GET /*`: Serve static files.
 - `GET /api/nextdate`: Get the next scheduled date for a task.
-- `GET /api/tasks`: Retrieve all tasks.
+- `GET /api/tasks`: Get all tasks.
 - `GET /api/task`: Get a task by Id.
 - `POST /api/task`: Add a new task.
 - `POST /api/task/done`: Mark a task as completed.
