@@ -1,4 +1,4 @@
-package handlers
+package database
 
 import (
 	"database/sql"
@@ -9,11 +9,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type connecter struct {
-	db *sql.DB
+type Connecter struct {
+	DB *sql.DB
 }
 
-func OpenOrCreate(name string) (*connecter, error) {
+func OpenOrCreate(name string) (*Connecter, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("error getting working directory: %v", err)
@@ -39,11 +39,11 @@ func OpenOrCreate(name string) (*connecter, error) {
 		}
 	}
 
-	return &connecter{db: db}, nil
+	return &Connecter{DB: db}, nil
 }
 
-func (c *connecter) Close() {
-	defer c.db.Close()
+func (c *Connecter) Close() {
+	defer c.DB.Close()
 }
 
 func createDatabase(db *sql.DB) error {

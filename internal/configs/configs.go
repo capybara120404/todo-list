@@ -14,7 +14,7 @@ var (
 )
 
 func init() {
-	err := godotenv.Load("configs/.env")
+	err := godotenv.Load("internal/configs/.env")
 	if err != nil {
 		log.Fatalf("an error occurred while importing configuration files: %v", err)
 	}
